@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap');
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Rajdhani', sans-serif;
+  background: #000;
+  color: #00ffff;
+  position: relative;
+}
+
+.title {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: clamp(2rem, 8vw, 5rem);
+  font-weight: 500;
+  letter-spacing: 0.5rem;
+  text-transform: uppercase;
+  margin: 0;
+  text-shadow: 0 0 5px #00ffff, 0 0 15px #00ffff, 0 0 30px #00ffff;
+  animation: flicker 3s infinite alternate;
+}
+
+.canvas-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+@keyframes flicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    text-shadow:
+      0 0 4px #00ffff,
+      0 0 11px #00ffff,
+      0 0 19px #00ffff,
+      0 0 40px #0fa,
+      0 0 80px #0fa;
+  }
+  20%, 24%, 55% {       
+    text-shadow: none;
+  }
+}
+
+.mic-permission-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  z-index: 100;
+}

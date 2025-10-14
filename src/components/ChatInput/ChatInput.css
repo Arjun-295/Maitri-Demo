@@ -1,0 +1,55 @@
+.chat-input-container {
+  position: absolute;
+  bottom: 8rem; /* Position it above the GlassNav */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px; /* Limit the width */
+  display: flex; /* Use flexbox for alignment */
+  align-items: center;
+  z-index: 15;
+  padding: 0 1rem; /* Add some horizontal padding for smaller screens */
+  box-sizing: border-box; /* Include padding in the width calculation */
+}
+
+.chat-input {
+  flex-grow: 1; /* Allows the input to take up available space */
+  padding: 1rem 1.5rem;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1.1rem;
+  color: #fff;
+  background: rgba(20, 25, 40, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  outline: none;
+  transition: border 0.3s ease;
+  margin-right: -3.5rem; /* Overlap the input with the button */
+  padding-right: 4.5rem; /* Make space for the button text/icon */
+}
+
+.chat-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-input:focus {
+  border: 1px solid rgba(0, 255, 255, 0.5);
+}
+
+.send-button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+  z-index: 1; /* Ensure button is clickable over input */
+}
+
+.send-button:hover {
+  color: #00ffff;
+}

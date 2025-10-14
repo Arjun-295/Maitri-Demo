@@ -1,0 +1,52 @@
+.glass-nav-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    gap: 1rem;
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+  
+    /* The Glassmorphism Effect */
+    background: rgba(20, 25, 40, 0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px); /* For Safari */
+    border-radius: 50px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+  
+  .nav-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.75rem 1.5rem;
+    border-radius: 30px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .nav-button:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .nav-button.active {
+    color: #00ffff;
+    background-color: rgba(0, 255, 255, 0.15);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+  }
+  
+  .nav-button span {
+    line-height: 1; /* Helps vertically align text with icons */
+  }
