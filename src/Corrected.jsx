@@ -1,8 +1,8 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { useRef, useMemo, useState, useEffect } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 // 1. Import Stars from drei
-import { Sphere, Points, PointMaterial, Stars } from '@react-three/drei';
-import * as THREE from 'three';
+import { Sphere, Points, PointMaterial, Stars } from "@react-three/drei";
+import * as THREE from "three";
 
 // --- 3D Orb & Particles Components ---
 
@@ -24,9 +24,8 @@ function useMicrophone() {
         analyser.fftSize = 256;
         source.connect(analyser);
         analyserRef.current = analyser;
-      } catch (err)
-      {
-        console.error('Error accessing microphone:', err);
+      } catch (err) {
+        console.error("Error accessing microphone:", err);
       }
     };
 
@@ -34,9 +33,9 @@ function useMicrophone() {
 
     return () => {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       }
-      if (audioContext && audioContext.state !== 'closed') {
+      if (audioContext && audioContext.state !== "closed") {
         audioContext.close();
       }
     };
@@ -49,13 +48,19 @@ function useMicrophone() {
 function Particles({ count = 2500, analyserRef }) {
   const pointsRef = useRef();
   // Memoize the data array to avoid creating it on every frame
-  const dataArray = useMemo(() => analyserRef.current ? new Uint8Array(analyserRef.current.frequencyBinCount) : null, [analyserRef]);
+  const dataArray = useMemo(
+    () =>
+      analyserRef.current
+        ? new Uint8Array(analyserRef.current.frequencyBinCount)
+        : null,
+    [analyserRef]
+  );
 
   const positions = useMemo(() => {
     const p = new Array(count).fill(0).map(() => {
       const r = 4 + Math.random() * 3;
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos((Math.random() * 2) - 1);
+      const phi = Math.acos(Math.random() * 2 - 1);
       const x = r * Math.sin(phi) * Math.cos(theta);
       const y = r * Math.sin(phi) * Math.sin(theta);
       const z = r * Math.cos(phi);
@@ -73,10 +78,15 @@ function Particles({ count = 2500, analyserRef }) {
       // Make particles react to voice by reading from the analyserRef
       if (analyserRef.current && dataArray) {
         analyserRef.current.getByteFrequencyData(dataArray);
-        const avgFrequency = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+        const avgFrequency =
+          dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
         const targetSize = 0.035 + avgFrequency / 5000;
-        if(pointsRef.current.material.size) {
-            pointsRef.current.material.size = THREE.MathUtils.lerp(pointsRef.current.material.size, targetSize, 0.1);
+        if (pointsRef.current.material.size) {
+          pointsRef.current.material.size = THREE.MathUtils.lerp(
+            pointsRef.current.material.size,
+            targetSize,
+            0.1
+          );
         }
       }
     }
@@ -99,57 +109,78 @@ function Particles({ count = 2500, analyserRef }) {
 // Central pulsating sphere component
 function PulsatingSphere({ analyserRef }) {
   const meshRef = useRef();
-  const dataArray = useMemo(() => analyserRef.current ? new Uint8Array(analyserRef.current.frequencyBinCount) : null, [analyserRef]);
-  
-  const material = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#00ffff',
-    emissive: '#00ffff',
-    emissiveIntensity: 0.5,
-    toneMapped: false,
-    transparent: true,
-    opacity: 0.3,
-    wireframe: true,
-  }), []);
+  const dataArray = useMemo(
+    () =>
+      analyserRef.current
+        ? new Uint8Array(analyserRef.current.frequencyBinCount)
+        : null,
+    [analyserRef]
+  );
+
+  const material = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: "#00ffff",
+        emissive: "#00ffff",
+        emissiveIntensity: 0.5,
+        toneMapped: false,
+        transparent: true,
+        opacity: 0.3,
+        wireframe: true,
+      }),
+    []
+  );
 
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
     let voiceFrequency = 0;
 
     if (analyserRef.current && dataArray) {
-        analyserRef.current.getByteFrequencyData(dataArray);
-        voiceFrequency = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+      analyserRef.current.getByteFrequencyData(dataArray);
+      voiceFrequency =
+        dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
     }
 
     const basePulse = Math.sin(time * 1.5) * 0.05 + 0.95;
-    const targetScale = 1 + (voiceFrequency / 150);
+    const targetScale = 1 + voiceFrequency / 150;
     const currentScale = meshRef.current.scale.x;
     const lerpedScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.2);
     const finalScale = basePulse * lerpedScale;
 
     meshRef.current.scale.set(finalScale, finalScale, finalScale);
-    material.emissiveIntensity = THREE.MathUtils.lerp(material.emissiveIntensity, 0.5 + voiceFrequency / 30, 0.2);
+    material.emissiveIntensity = THREE.MathUtils.lerp(
+      material.emissiveIntensity,
+      0.5 + voiceFrequency / 30,
+      0.2
+    );
   });
 
-  return (
-    <Sphere ref={meshRef} args={[2.5, 32, 32]} material={material} />
-  );
+  return <Sphere ref={meshRef} args={[2.5, 32, 32]} material={material} />;
 }
 
 // Component to contain the 3D scene and microphone logic
 function SceneContent() {
-    const analyserRef = useMicrophone();
+  const analyserRef = useMicrophone();
 
-    return (
-        <>
-            {/* 2. Add the Stars component for the space background 🌌 */}
-            <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+  return (
+    <>
+      {/* 2. Add the Stars component for the space background 🌌 */}
+      <Stars
+        radius={100}
+        depth={50}
+        count={5000}
+        factor={4}
+        saturation={0}
+        fade
+        speed={1}
+      />
 
-            <ambientLight intensity={0.2} />
-            <pointLight position={[10, 10, 10]} color="#00aaff" intensity={5} />
-            <PulsatingSphere analyserRef={analyserRef} />
-            <Particles analyserRef={analyserRef} />
-        </>
-    );
+      <ambientLight intensity={0.2} />
+      <pointLight position={[10, 10, 10]} color="#00aaff" intensity={5} />
+      <PulsatingSphere analyserRef={analyserRef} />
+      <Particles analyserRef={analyserRef} />
+    </>
+  );
 }
 
 // 3D Scene component wrapper
@@ -161,7 +192,6 @@ function Orb() {
   );
 }
 
-
 // --- Main App Component ---
 
 export default function App() {
@@ -170,13 +200,13 @@ export default function App() {
   useEffect(() => {
     // Check for microphone permission and update state if denied
     if (navigator.permissions) {
-      navigator.permissions.query({ name: 'microphone' }).then(result => {
-        if (result.state === 'denied') {
+      navigator.permissions.query({ name: "microphone" }).then((result) => {
+        if (result.state === "denied") {
           setPermissionError(true);
         }
         result.onchange = () => {
-           setPermissionError(result.state === 'denied');
-        }
+          setPermissionError(result.state === "denied");
+        };
       });
     }
   }, []);
@@ -255,11 +285,14 @@ export default function App() {
     <>
       <style>{FullScreenUIStyles}</style>
       <div className="app-container">
-        <h1 className="title">MAITRI</h1>
+        <h1 className="title">VYOM</h1>
         <div className="canvas-wrapper">
           {permissionError && (
             <div className="mic-permission-overlay">
-              <h2>Microphone access is required for MAITRI to listen. Please enable it in your browser settings.</h2>
+              <h2>
+                Microphone access is required for VYOM to listen. Please enable
+                it in your browser settings.
+              </h2>
             </div>
           )}
           <Orb />

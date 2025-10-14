@@ -34,7 +34,7 @@ export default function ChatInput() {
       <input
         type="text"
         className="chat-input"
-        placeholder="Ask MAITRI anything..."
+        placeholder="Ask VYOM anything..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
