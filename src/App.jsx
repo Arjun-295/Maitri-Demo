@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Orb from "./components/Orb";
 import GlassNav from "./components/GlassNav";
 import ChatInput from "./components/ChatInput";
+import ChatPage from "./components/ChatPage";
 
 // Stylesheet
 import "./App.css";
@@ -15,6 +16,10 @@ export default function App() {
   // State to manage which mode is active (chat, video, or voice)
   // 'voice' is the default active mode.
   const [activeButton, setActiveButton] = useState("voice");
+
+  // State for chat page navigation
+  const [showChatPage, setShowChatPage] = useState(false);
+  const [initialMessage, setInitialMessage] = useState("");
 
   // Effect to check for microphone permissions on component mount
   useEffect(() => {
@@ -31,16 +36,38 @@ export default function App() {
     }
   }, []);
 
+  // Handle navigation to chat page
+  const handleChatNavigate = (message) => {
+    setInitialMessage(message);
+    setShowChatPage(true);
+  };
+
+  // Handle going back from chat page
+  const handleBackFromChat = () => {
+    setShowChatPage(false);
+    setInitialMessage("");
+  };
+
+  // Render chat page if active
+  if (showChatPage) {
+    return (
+      <ChatPage
+        initialMessage={initialMessage}
+        onBack={handleBackFromChat}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
-      <h1 className="title">VYOM</h1>
+      <h1 className="title">Maitri</h1>
 
       {/* Wrapper for the 3D canvas */}
       <div className="canvas-wrapper">
         {permissionError && (
           <div className="mic-permission-overlay">
             <h2>
-              Microphone access is required for VYOM to listen. Please enable it
+              Microphone access is required for Maitri to listen. Please enable it
               in your browser settings.
             </h2>
           </div>
@@ -49,10 +76,11 @@ export default function App() {
       </div>
 
       {/* Conditionally render the ChatInput only when 'chat' mode is active */}
-      {activeButton === "chat" && <ChatInput />}
+      {activeButton === "chat" && <ChatInput onNavigate={handleChatNavigate} />}
 
       {/* The main navigation bar. It receives the state and the function to update it. */}
       <GlassNav activeButton={activeButton} setActiveButton={setActiveButton} />
     </div>
   );
 }
+

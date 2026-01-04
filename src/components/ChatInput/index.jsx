@@ -18,13 +18,16 @@ const SendIcon = () => (
   </svg>
 );
 
-export default function ChatInput() {
+export default function ChatInput({ onNavigate }) {
   const [message, setMessage] = useState("");
 
   const handleSend = (e) => {
     e.preventDefault(); // Prevent page reload on form submission
     if (message.trim()) {
-      console.log("Sending message:", message); // Placeholder for actual chat logic
+      // Navigate to chat page with the message
+      if (onNavigate) {
+        onNavigate(message);
+      }
       setMessage(""); // Clear the input field
     }
   };
@@ -34,7 +37,7 @@ export default function ChatInput() {
       <input
         type="text"
         className="chat-input"
-        placeholder="Ask VYOM anything..."
+        placeholder="Ask Maitri anything..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
@@ -44,3 +47,4 @@ export default function ChatInput() {
     </form>
   );
 }
+

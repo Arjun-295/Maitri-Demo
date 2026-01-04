@@ -285,12 +285,12 @@ export default function App() {
     <>
       <style>{FullScreenUIStyles}</style>
       <div className="app-container">
-        <h1 className="title">VYOM</h1>
+        <h1 className="title">Maitri</h1>
         <div className="canvas-wrapper">
           {permissionError && (
             <div className="mic-permission-overlay">
               <h2>
-                Microphone access is required for VYOM to listen. Please enable
+                Microphone access is required for Maitri to listen. Please enable
                 it in your browser settings.
               </h2>
             </div>
