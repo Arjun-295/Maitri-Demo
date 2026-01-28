@@ -16,6 +16,7 @@
   position: absolute;
   top: 2rem;
   left: 50%;
+  text-align: center;
   transform: translateX(-50%);
   z-index: 10;
   font-size: clamp(2rem, 8vw, 5rem);

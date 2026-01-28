@@ -1,0 +1,33 @@
+{
+  "name": "maitri-backend",
+  "version": "1.0.0",
+  "description": "Backend server for MAITRI AI assistant - psychological and physical well-being support for astronauts",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "maitri",
+    "ai",
+    "langchain",
+    "gemini",
+    "astronaut",
+    "well-being"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@deepgram/sdk": "^4.11.3",
+    "@elevenlabs/elevenlabs-js": "^2.32.0",
+    "@langchain/core": "^1.1.15",
+    "@langchain/google-genai": "^2.1.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "langchain": "^1.2.10",
+    "uuid": "^9.0.0",
+    "ws": "^8.19.0"
+  }
+}

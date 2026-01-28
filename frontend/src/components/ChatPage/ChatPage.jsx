@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./ChatPage.css";
+import ReactMarkdown from "react-markdown";
+
+// API Base URL for MAITRI backend
+const API_BASE_URL = "http://localhost:5000/api";
 
 // Back arrow icon
 const BackIcon = () => (
@@ -35,28 +39,110 @@ const SendIcon = () => (
   </svg>
 );
 
+// Loading dots animation component
+const LoadingDots = () => (
+  <div className="loading-dots">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+);
+
 export default function ChatPage({ initialMessage, onBack }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
   const [cameraStream, setCameraStream] = useState(null);
   const videoRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const initialMessageProcessed = useRef(false);
+
+  /**
+   * Send a message to the MAITRI backend API
+   * @param {string} message - The message to send
+   * @returns {Promise<{response: string, sessionId: string}>}
+   */
+  const sendMessageToAPI = async (message) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          sessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to get response from MAITRI",
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  };
+
+  /**
+   * Add a message to the messages array
+   */
+  const addMessage = (text, sender, isError = false) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), text, sender, timestamp: new Date(), isError },
+    ]);
+  };
+
+  /**
+   * Process a user message and get AI response
+   */
+  const processMessage = async (userMessage) => {
+    addMessage(userMessage, "user");
+    setIsLoading(true);
+
+    try {
+      const result = await sendMessageToAPI(userMessage);
+
+      // Update session ID if returned
+      if (result.sessionId) {
+        setSessionId(result.sessionId);
+      }
+
+      addMessage(result.response, "bot");
+    } catch (error) {
+      addMessage(
+        "I apologize, but I'm having trouble connecting right now. Please try again in a moment. 🛠️",
+        "bot",
+        true,
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Initialize with the first message if provided
   useEffect(() => {
-    if (initialMessage && initialMessage.trim()) {
-      addMessage(initialMessage, "user");
-      // Simulate response after a short delay
-      setTimeout(() => {
-        addMessage("Under Development 🚧", "bot");
-      }, 500);
+    if (
+      initialMessage &&
+      initialMessage.trim() &&
+      !initialMessageProcessed.current
+    ) {
+      initialMessageProcessed.current = true;
+      processMessage(initialMessage);
     }
-  }, []);
+  }, [initialMessage]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
   // Initialize camera
   useEffect(() => {
@@ -92,22 +178,12 @@ export default function ChatPage({ initialMessage, onBack }) {
     }
   }, [cameraStream]);
 
-  const addMessage = (text, sender) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: Date.now(), text, sender, timestamp: new Date() },
-    ]);
-  };
-
   const handleSend = (e) => {
     e.preventDefault();
-    if (inputValue.trim()) {
-      addMessage(inputValue, "user");
+    if (inputValue.trim() && !isLoading) {
+      const message = inputValue.trim();
       setInputValue("");
-      // Simulate bot response
-      setTimeout(() => {
-        addMessage("Under Development 🚧", "bot");
-      }, 500);
+      processMessage(message);
     }
   };
 
@@ -149,7 +225,7 @@ export default function ChatPage({ initialMessage, onBack }) {
                 <span className="emotion-icon">🔬</span>
                 <span className="emotion-text">Emotion Detection</span>
               </div>
-              <p className="under-development">Under Development</p>
+              <p className="under-development"></p>
             </div>
           </div>
         </div>
@@ -159,21 +235,32 @@ export default function ChatPage({ initialMessage, onBack }) {
           <div className="chat-box glass-effect">
             {/* Messages area */}
             <div className="messages-container">
-              {messages.length === 0 ? (
+              {messages.length === 0 && !isLoading ? (
                 <div className="empty-chat">
                   <p>Start a conversation with Maitri</p>
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`message ${msg.sender === "user" ? "user-message" : "bot-message"}`}
-                  >
-                    <div className="message-bubble">
-                      <p>{msg.text}</p>
+                <>
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`message ${msg.sender === "user" ? "user-message" : "bot-message"}${msg.isError ? " error-message" : ""}`}
+                    >
+                      <div className="message-bubble">
+                        <div className="message-text">
+                          <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                  {isLoading && (
+                    <div className="message bot-message">
+                      <div className="message-bubble loading-bubble">
+                        <LoadingDots />
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -187,7 +274,11 @@ export default function ChatPage({ initialMessage, onBack }) {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
               />
-              <button type="submit" className="chat-send-button">
+              <button
+                type="submit"
+                className={`chat-send-button${isLoading ? " disabled" : ""}`}
+                disabled={isLoading}
+              >
                 <SendIcon />
               </button>
             </form>
