@@ -1,0 +1,84 @@
+.breathingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 25px;
+  border-radius: 30px;
+  width: 100%;
+  max-width: 500px;
+  margin: 10px auto;
+}
+
+.breathingCircle {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(100, 200, 255, 0.4) 0%,
+    rgba(50, 100, 255, 0.1) 70%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 4s linear;
+  margin-bottom: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.breathingCircle.active.inhale {
+  transform: scale(1.5);
+  background: radial-gradient(
+    circle,
+    rgba(100, 255, 200, 0.6) 0%,
+    rgba(50, 200, 150, 0.2) 70%
+  );
+}
+
+.breathingCircle.active.exhale {
+  transform: scale(1);
+  background: radial-gradient(
+    circle,
+    rgba(255, 100, 100, 0.4) 0%,
+    rgba(200, 50, 50, 0.1) 70%
+  );
+}
+
+.breathingText {
+  text-align: center;
+  z-index: 2;
+}
+
+.breathingText h2 {
+  font-size: 2rem;
+  margin: 0;
+  color: white;
+}
+
+.breathingText p {
+  font-size: 3rem;
+  font-weight: bold;
+  margin: 10px 0 0 0;
+}
+
+.breathingControls {
+  margin-top: 20px;
+}
+
+.controlButton {
+  padding: 12px 24px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.breathingInstruction {
+  margin-top: 20px;
+  font-style: italic;
+  opacity: 0.7;
+}

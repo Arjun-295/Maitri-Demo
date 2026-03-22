@@ -1,56 +1,30 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Orb from "../Orb/Orb";
+import { useNavigate } from "react-router-dom";
+import Orb from "../orb";
 import "./VoicePage.css";
 
 // Icons
-const MicIcon = () => (
+const PlayIcon = () => (
   <svg
     width="24"
     height="24"
     viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
+    fill="currentColor"
+    stroke="none"
   >
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-    <line x1="12" y1="19" x2="12" y2="23"></line>
+    <polygon points="5 3 19 12 5 21 5 3"></polygon>
   </svg>
 );
 
-const MicOffIcon = () => (
+const StopIcon = () => (
   <svg
     width="24"
     height="24"
     viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
+    fill="currentColor"
+    stroke="none"
   >
-    <line x1="1" y1="1" x2="23" y2="23"></line>
-    <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path>
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-    <line x1="12" y1="19" x2="12" y2="23"></line>
-  </svg>
-);
-
-const PhoneOffIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path>
-    <line x1="23" y1="1" x2="1" y2="23"></line>
+    <rect x="4" y="4" width="16" height="16" rx="2"></rect>
   </svg>
 );
 
@@ -70,9 +44,10 @@ const BackIcon = () => (
   </svg>
 );
 
-export default function VoicePage({ onBack }) {
-  const [isMuted, setIsMuted] = useState(false);
-  const [status, setStatus] = useState("Connecting...");
+export default function VoicePage() {
+  const navigate = useNavigate();
+  const [isRunning, setIsRunning] = useState(false);
+  const [status, setStatus] = useState("Ready");
   const [isConnected, setIsConnected] = useState(false);
   const [orbFrequency, setOrbFrequency] = useState(0); // Frequency driver for Orb
 
@@ -84,6 +59,12 @@ export default function VoicePage({ onBack }) {
   const audioQueueRef = useRef([]);
   const isPlayingRef = useRef(false);
   const analyserRef = useRef(null);
+
+  // Handler for navigating back
+  const handleBack = () => {
+    stopVoiceAgent();
+    navigate("/");
+  };
 
   // Initialize Audio Context
   const initAudio = async () => {
@@ -131,7 +112,6 @@ export default function VoicePage({ onBack }) {
 
       processor.onaudioprocess = (e) => {
         if (
-          isMuted ||
           !socketRef.current ||
           socketRef.current.readyState !== WebSocket.OPEN
         )
@@ -186,14 +166,18 @@ export default function VoicePage({ onBack }) {
     updateOrbFromAnalyser();
   };
 
-  // Connect WebSocket
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:5000/ws/voice"); // Make sure port matches
+  // Start Voice Agent
+  const startVoiceAgent = () => {
+    if (isRunning) return;
+
+    setStatus("Connecting...");
+    const ws = new WebSocket("ws://localhost:5000/ws/voice");
     socketRef.current = ws;
 
     ws.onopen = () => {
       console.log("WS Connected");
       setIsConnected(true);
+      setIsRunning(true);
       initAudio();
     };
 
@@ -201,12 +185,10 @@ export default function VoicePage({ onBack }) {
       const data = event.data;
 
       if (data instanceof Blob) {
-        // Audio chunk from server
         const arrayBuffer = await data.arrayBuffer();
         audioQueueRef.current.push(arrayBuffer);
         playNextChunk();
       } else {
-        // JSON message
         try {
           const msg = JSON.parse(data);
           if (msg.type === "tts_end") {
@@ -218,17 +200,42 @@ export default function VoicePage({ onBack }) {
 
     ws.onclose = () => {
       setIsConnected(false);
+      setIsRunning(false);
       setStatus("Disconnected");
     };
 
+    ws.onerror = () => {
+      setStatus("Connection Error");
+      setIsRunning(false);
+    };
+  };
+
+  // Stop Voice Agent
+  const stopVoiceAgent = () => {
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+    setIsConnected(false);
+    setIsRunning(false);
+    setStatus("Ready");
+    setOrbFrequency(0);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      ws.close();
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
+      stopVoiceAgent();
     };
   }, []);
 
@@ -271,14 +278,10 @@ export default function VoicePage({ onBack }) {
     }
   };
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
   return (
     <div className="voice-page-container">
       <div className="voice-page-header">
-        <button className="back-button" onClick={onBack}>
+        <button className="back-button" onClick={handleBack}>
           <BackIcon />
           <span>Exit Voice Mode</span>
         </button>
@@ -301,15 +304,15 @@ export default function VoicePage({ onBack }) {
         </div>
 
         <div className="voice-controls">
-          <button
-            className={`control-button mute ${isMuted ? "active" : ""}`}
-            onClick={toggleMute}
-          >
-            {isMuted ? <MicOffIcon /> : <MicIcon />}
-          </button>
-          <button className="control-button end-call" onClick={onBack}>
-            <PhoneOffIcon />
-          </button>
+          {!isRunning ? (
+            <button className="control-button start" onClick={startVoiceAgent}>
+              <PlayIcon />
+            </button>
+          ) : (
+            <button className="control-button stop" onClick={stopVoiceAgent}>
+              <StopIcon />
+            </button>
+          )}
         </div>
       </div>
     </div>

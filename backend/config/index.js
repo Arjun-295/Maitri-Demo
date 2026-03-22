@@ -15,10 +15,16 @@ const config = {
 
   // Google Gemini API configuration
   googleApiKey: process.env.GOOGLE_API_KEY,
-  geminiModel: process.env.GEMINI_MODEL || "gemini-3-flash-preview",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
 
   // CORS configuration
-  corsOrigin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  corsOrigin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(",")
+    : [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+      ],
 };
 
 // Validate required configuration

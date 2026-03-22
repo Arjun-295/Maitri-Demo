@@ -1,0 +1,406 @@
+.voice-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background-color: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  overflow: hidden;
+  color: white;
+  pointer-events: none;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.voice-page-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.9),
+    rgba(0, 0, 0, 0.4),
+    transparent
+  );
+  pointer-events: auto;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 0.75rem 1.25rem;
+  border-radius: 50px;
+  cursor: pointer;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(0, 255, 255, 0.4);
+  color: #00ffff;
+  transform: translateX(-3px);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+.back-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.voice-page-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.orb-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Pulsating animation for the orb wrapper */
+@keyframes orbPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.3);
+  }
+}
+
+.orb-container.pulsating {
+  animation: orbPulse 0.8s ease-in-out infinite;
+}
+
+/* Voice Controls - Premium Design */
+.voice-controls {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1.5rem;
+  z-index: 10;
+  pointer-events: auto;
+  background: linear-gradient(
+    135deg,
+    rgba(20, 25, 40, 0.6),
+    rgba(10, 15, 25, 0.8)
+  );
+  padding: 1.25rem 2.5rem;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 1px 0 rgba(255, 255, 255, 0.1) inset;
+}
+
+.control-button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: white;
+  font-size: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.05)
+  );
+  box-shadow:
+    0 4px 15px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(255, 255, 255, 0.2),
+    transparent 50%
+  );
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.control-button:hover {
+  transform: scale(1.12);
+  border-color: rgba(0, 255, 255, 0.5);
+  box-shadow:
+    0 8px 25px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(0, 255, 255, 0.3);
+}
+
+.control-button:active {
+  transform: scale(0.95);
+}
+
+.control-button svg {
+  width: 26px;
+  height: 26px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Start Button */
+.control-button.start {
+  background: linear-gradient(
+    145deg,
+    rgba(46, 213, 115, 0.8),
+    rgba(34, 197, 94, 0.9)
+  );
+  border-color: rgba(90, 247, 142, 0.6);
+  box-shadow:
+    0 4px 20px rgba(46, 213, 115, 0.5),
+    0 0 40px rgba(46, 213, 115, 0.3);
+}
+
+.control-button.start:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(90, 247, 142, 1),
+    rgba(46, 213, 115, 1)
+  );
+  box-shadow:
+    0 8px 30px rgba(46, 213, 115, 0.7),
+    0 0 60px rgba(46, 213, 115, 0.5);
+}
+
+/* Stop Button */
+.control-button.stop {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 71, 87, 0.9),
+    rgba(220, 50, 65, 0.95)
+  );
+  border-color: rgba(255, 100, 120, 0.5);
+  box-shadow:
+    0 4px 20px rgba(255, 71, 87, 0.4),
+    0 0 30px rgba(255, 71, 87, 0.2);
+  animation: stopPulse 1.5s ease-in-out infinite;
+}
+
+.control-button.stop:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 100, 120, 1),
+    rgba(255, 71, 87, 1)
+  );
+  box-shadow:
+    0 8px 30px rgba(255, 71, 87, 0.6),
+    0 0 50px rgba(255, 71, 87, 0.4);
+}
+
+@keyframes stopPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 20px rgba(255, 71, 87, 0.4),
+      0 0 30px rgba(255, 71, 87, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 4px 25px rgba(255, 71, 87, 0.6),
+      0 0 50px rgba(255, 71, 87, 0.4);
+  }
+}
+
+/* Status Indicator - Premium Style */
+.status-indicator {
+  position: absolute;
+  top: 6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(
+    135deg,
+    rgba(20, 25, 40, 0.7),
+    rgba(10, 15, 25, 0.8)
+  );
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.status-text {
+  font-size: 1rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #00ffff;
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+/* Connection Status - Premium Style */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ff6b81, #ff4757);
+  box-shadow: 0 0 8px rgba(255, 71, 87, 0.6);
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.status-dot.connected {
+  background: linear-gradient(145deg, #5af78e, #2ed573);
+  box-shadow: 0 0 12px rgba(46, 213, 115, 0.8);
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+}
+
+/* Audio Waveform Visualization (optional enhancement) */
+.audio-visualizer {
+  position: absolute;
+  bottom: 8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 40px;
+  z-index: 5;
+}
+
+.audio-bar {
+  width: 4px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 255, 255, 0.3),
+    rgba(0, 255, 255, 0.8)
+  );
+  border-radius: 2px;
+  animation: audioWave 0.5s ease-in-out infinite alternate;
+}
+
+.audio-bar:nth-child(1) {
+  animation-delay: 0s;
+  height: 15px;
+}
+.audio-bar:nth-child(2) {
+  animation-delay: 0.1s;
+  height: 25px;
+}
+.audio-bar:nth-child(3) {
+  animation-delay: 0.2s;
+  height: 20px;
+}
+.audio-bar:nth-child(4) {
+  animation-delay: 0.3s;
+  height: 30px;
+}
+.audio-bar:nth-child(5) {
+  animation-delay: 0.15s;
+  height: 22px;
+}
+
+@keyframes audioWave {
+  0% {
+    transform: scaleY(0.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .voice-controls {
+    padding: 1rem 1.5rem;
+    gap: 1rem;
+  }
+
+  .control-button {
+    width: 56px;
+    height: 56px;
+  }
+
+  .control-button svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .status-indicator {
+    top: 5rem;
+    padding: 0.5rem 1.5rem;
+  }
+
+  .voice-page-header {
+    padding: 1rem;
+  }
+}

@@ -1,0 +1,88 @@
+.ambientContainer {
+  padding: 25px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  margin: 10px auto;
+  text-align: center;
+}
+
+.currentSoundInfo {
+  margin-bottom: 20px;
+}
+
+.ambientIconLarge {
+  font-size: 5rem;
+  margin-bottom: 20px;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.ambientControls {
+  margin: 30px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.playToggle {
+  padding: 12px 30px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 50px;
+  color: white;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.volumeControl {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 80%;
+}
+
+.volumeControl input[type="range"] {
+  flex: 1;
+  cursor: pointer;
+}
+
+.soundscapeList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.soundscapeItem {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.soundscapeItem:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.soundscapeItem.active {
+  background: rgba(100, 200, 255, 0.2);
+  border-color: rgba(100, 200, 255, 0.4);
+}

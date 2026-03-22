@@ -18,6 +18,12 @@ import {
 } from "@langchain/core/messages";
 import config from "../config/index.js";
 import { MAITRI_SYSTEM_PROMPT } from "../prompts/maitriSystemPrompt.js";
+import { 
+  CBT_CORE_PROMPT, 
+  DBT_SKILL_PROMPT, 
+  ACT_INTEGRATION_PROMPT, 
+  PSYCHOEDUCATION_PROMPT 
+} from "../prompts/cbtPrompts.js";
 
 /**
  * In-memory storage for conversation histories by session ID
@@ -43,13 +49,35 @@ const model = new ChatGoogleGenerativeAI({
 });
 
 /**
- * Create the chat prompt template with system message and conversation history
+ * Prompt templates dictionary for different therapeutic modules
  */
-const chatPrompt = ChatPromptTemplate.fromMessages([
-  ["system", MAITRI_SYSTEM_PROMPT],
-  new MessagesPlaceholder("history"),
-  ["human", "{input}"],
-]);
+const promptTemplates = {
+  default: ChatPromptTemplate.fromMessages([
+    ["system", MAITRI_SYSTEM_PROMPT],
+    new MessagesPlaceholder("history"),
+    ["human", "{input}"],
+  ]),
+  cbt_core: ChatPromptTemplate.fromMessages([
+    ["system", CBT_CORE_PROMPT],
+    new MessagesPlaceholder("history"),
+    ["human", "{input}"],
+  ]),
+  dbt_skill: ChatPromptTemplate.fromMessages([
+    ["system", DBT_SKILL_PROMPT],
+    new MessagesPlaceholder("history"),
+    ["human", "{input}"],
+  ]),
+  act_integration: ChatPromptTemplate.fromMessages([
+    ["system", ACT_INTEGRATION_PROMPT],
+    new MessagesPlaceholder("history"),
+    ["human", "{input}"],
+  ]),
+  psychoeducation: ChatPromptTemplate.fromMessages([
+    ["system", PSYCHOEDUCATION_PROMPT],
+    new MessagesPlaceholder("history"),
+    ["human", "{input}"],
+  ]),
+};
 
 /**
  * Get or create conversation history for a session
@@ -94,16 +122,27 @@ export function clearSession(sessionId) {
  * Process a chat message and generate a response
  * @param {string} sessionId - Unique session identifier
  * @param {string} userMessage - The user's message
+ * @param {string} emotion - Optional detected user emotion
+ * @param {string} moduleType - Optional module identifier (default, cbt_core, etc.)
  * @returns {Promise<{response: string, sessionId: string}>}
  */
-export async function chat(sessionId, userMessage) {
+export async function chat(sessionId, userMessage, emotion = null, moduleType = "default") {
   try {
     const history = getConversationHistory(sessionId);
 
+    // Get the correct prompt template based on moduleType
+    const selectedTemplate = promptTemplates[moduleType] || promptTemplates.default;
+
     // Format the prompt with history and current input
-    const formattedPrompt = await chatPrompt.formatMessages({
+    let enhancedInput = userMessage;
+    if (emotion && emotion !== "neutral") {
+      const emotionContext = `[User's facial expression suggests they are feeling ${emotion}. Please acknowledge and respond empathetically to their emotional state while addressing their message.]\n\n`;
+      enhancedInput = emotionContext + userMessage;
+    }
+
+    const formattedPrompt = await selectedTemplate.formatMessages({
       history: history,
-      input: userMessage,
+      input: enhancedInput,
     });
 
     // Generate response from the model

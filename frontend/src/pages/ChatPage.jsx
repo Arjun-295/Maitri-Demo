@@ -1,6 +1,38 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./ChatPage.css";
 import ReactMarkdown from "react-markdown";
+import {
+  loadModels,
+  detectEmotion,
+  areModelsLoaded,
+  EMOTION_EMOJIS,
+  EMOTION_COLORS,
+  getEmotionDisplayName,
+} from "../services/faceApiService";
+
+const moduleThemes = {
+  default: {
+    accent: '#00ffff',
+    glow: 'rgba(0, 255, 255, 0.3)',
+  },
+  cbt_core: {
+    accent: '#00ffff',
+    glow: 'rgba(0, 255, 255, 0.3)',
+  },
+  dbt_skill: {
+    accent: '#ff00ff',
+    glow: 'rgba(255, 0, 255, 0.3)',
+  },
+  act_integration: {
+    accent: '#00ff00',
+    glow: 'rgba(0, 255, 0, 0.3)',
+  },
+  psychoeducation: {
+    accent: '#ffff00',
+    glow: 'rgba(255, 255, 0, 0.3)',
+  }
+};
 
 // API Base URL for MAITRI backend
 const API_BASE_URL = "http://localhost:5000/api";
@@ -48,22 +80,49 @@ const LoadingDots = () => (
   </div>
 );
 
-export default function ChatPage({ initialMessage, onBack }) {
+export default function ChatPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const initialMessage = location.state?.message || "";
+  const moduleType = location.state?.moduleType || "default";
+  const pageTitle = location.state?.title || "Maitri Chat";
+
   const [messages, setMessages] = useState([]);
+  const theme = moduleThemes[moduleType] || moduleThemes.default;
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [cameraStream, setCameraStream] = useState(null);
+
+  // Emotion detection state
+  const [detectedEmotion, setDetectedEmotion] = useState(null);
+  const [emotionConfidence, setEmotionConfidence] = useState(0);
+  const [isModelLoading, setIsModelLoading] = useState(true);
+  const [modelError, setModelError] = useState(false);
+
   const videoRef = useRef(null);
   const messagesEndRef = useRef(null);
   const initialMessageProcessed = useRef(false);
+  const detectionIntervalRef = useRef(null);
+
+  // Handler for navigating back
+  const handleBack = () => {
+    // Stop camera and detection before going back
+    if (detectionIntervalRef.current) {
+      clearInterval(detectionIntervalRef.current);
+    }
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+    navigate("/");
+  };
 
   /**
    * Send a message to the MAITRI backend API
    * @param {string} message - The message to send
    * @returns {Promise<{response: string, sessionId: string}>}
    */
-  const sendMessageToAPI = async (message) => {
+  const sendMessageToAPI = async (message, emotion = null) => {
     try {
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
@@ -73,6 +132,8 @@ export default function ChatPage({ initialMessage, onBack }) {
         body: JSON.stringify({
           message,
           sessionId,
+          emotion: emotion || detectedEmotion,
+          moduleType: moduleType,
         }),
       });
 
@@ -144,7 +205,7 @@ export default function ChatPage({ initialMessage, onBack }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // Initialize camera
+  // Initialize camera and emotion detection
   useEffect(() => {
     const startCamera = async () => {
       try {
@@ -161,15 +222,57 @@ export default function ChatPage({ initialMessage, onBack }) {
       }
     };
 
-    startCamera();
+    // Load face-api models
+    const initModels = async () => {
+      setIsModelLoading(true);
+      try {
+        const loaded = await loadModels();
+        if (!loaded) {
+          setModelError(true);
+        }
+      } catch (err) {
+        console.error("Model loading error:", err);
+        setModelError(true);
+      } finally {
+        setIsModelLoading(false);
+      }
+    };
 
-    // Cleanup camera on unmount
+    startCamera();
+    initModels();
+
+    // Cleanup camera and detection on unmount
     return () => {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+      }
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
+
+  // Start emotion detection when models and camera are ready
+  useEffect(() => {
+    if (!isModelLoading && !modelError && cameraStream && videoRef.current) {
+      // Run detection every 500ms
+      detectionIntervalRef.current = setInterval(async () => {
+        if (areModelsLoaded() && videoRef.current) {
+          const result = await detectEmotion(videoRef.current);
+          if (result) {
+            setDetectedEmotion(result.emotion);
+            setEmotionConfidence(result.confidence);
+          }
+        }
+      }, 500);
+    }
+
+    return () => {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+      }
+    };
+  }, [isModelLoading, modelError, cameraStream]);
 
   // Update video element when stream changes
   useEffect(() => {
@@ -187,23 +290,15 @@ export default function ChatPage({ initialMessage, onBack }) {
     }
   };
 
-  const handleBack = () => {
-    // Stop camera before going back
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
-    }
-    onBack();
-  };
-
   return (
-    <div className="chat-page-container">
+    <div className="chat-page-container" style={{ background: `radial-gradient(circle at 50% 10%, ${theme.accent}20, transparent 70%), #050508` }}>
       {/* Header with back button */}
-      <div className="chat-page-header">
-        <button className="back-button" onClick={handleBack}>
+      <div className="chat-page-header" style={{ borderBottomColor: theme.accent + '40', boxShadow: `0 4px 15px ${theme.accent}10` }}>
+        <button className="back-button" onClick={handleBack} style={{ color: theme.accent }}>
           <BackIcon />
           <span>Back</span>
         </button>
-        <h1 className="chat-page-title">Maitri Chat</h1>
+        <h1 className="chat-page-title" style={{ color: theme.accent, textShadow: `0 0 10px ${theme.accent}60` }}>{pageTitle}</h1>
       </div>
 
       {/* Main content area */}
@@ -221,11 +316,43 @@ export default function ChatPage({ initialMessage, onBack }) {
               />
             </div>
             <div className="emotion-overlay">
-              <div className="emotion-badge">
-                <span className="emotion-icon">🔬</span>
-                <span className="emotion-text">Emotion Detection</span>
-              </div>
-              <p className="under-development"></p>
+              {isModelLoading ? (
+                <div className="emotion-badge loading">
+                  <span className="emotion-icon">⏳</span>
+                  <span className="emotion-text">Loading AI...</span>
+                </div>
+              ) : modelError ? (
+                <div className="emotion-badge error">
+                  <span className="emotion-icon">⚠️</span>
+                  <span className="emotion-text">Detection Error</span>
+                </div>
+              ) : detectedEmotion ? (
+                <div
+                  className="emotion-badge detected"
+                  style={{
+                    backgroundColor: EMOTION_COLORS[detectedEmotion] + "20",
+                    borderColor: EMOTION_COLORS[detectedEmotion],
+                  }}
+                >
+                  <span className="emotion-icon">
+                    {EMOTION_EMOJIS[detectedEmotion]}
+                  </span>
+                  <span
+                    className="emotion-text"
+                    style={{ color: EMOTION_COLORS[detectedEmotion] }}
+                  >
+                    {getEmotionDisplayName(detectedEmotion)}
+                  </span>
+                  <span className="emotion-confidence">
+                    {Math.round(emotionConfidence * 100)}%
+                  </span>
+                </div>
+              ) : (
+                <div className="emotion-badge">
+                  <span className="emotion-icon">👤</span>
+                  <span className="emotion-text">Detecting...</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -246,7 +373,7 @@ export default function ChatPage({ initialMessage, onBack }) {
                       key={msg.id}
                       className={`message ${msg.sender === "user" ? "user-message" : "bot-message"}${msg.isError ? " error-message" : ""}`}
                     >
-                      <div className="message-bubble">
+                      <div className="message-bubble" style={msg.sender === "bot" ? { borderLeft: `3px solid ${theme.accent}`, background: `${theme.accent}05` } : {}}>
                         <div className="message-text">
                           <ReactMarkdown>{msg.text}</ReactMarkdown>
                         </div>
