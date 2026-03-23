@@ -7,6 +7,8 @@
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import maitriService from "../services/maitriChain.js";
+import { getTTSBuffer } from "../services/deepgram.js";
+import Conversation from "../models/Conversation.js";
 
 const router = Router();
 
@@ -38,10 +40,19 @@ router.post("/", async (req, res, next) => {
       });
     }
 
-    // Use provided sessionId or generate a new one
-    const currentSessionId = sessionId || uuidv4();
+    // Use provided sessionId (which is now MongoDB ObjectId) or create a new Conversation
+    let currentSessionId = sessionId;
+    if (!currentSessionId || currentSessionId.length < 24) {
+      // Create new conversation document
+      const newConv = await Conversation.create({
+        title: "New Chat",
+        moduleType: moduleType || "default",
+        userId: "guest"
+      });
+      currentSessionId = newConv._id.toString();
+    }
 
-    // Get response from MAITRI
+    // Get response from MAITRI (saves messages over in the service)
     const result = await maitriService.chat(
       currentSessionId,
       message.trim(),
@@ -51,7 +62,7 @@ router.post("/", async (req, res, next) => {
 
     res.json({
       response: result.response,
-      sessionId: result.sessionId,
+      sessionId: currentSessionId,
     });
   } catch (error) {
     next(error);
@@ -70,20 +81,21 @@ router.post("/", async (req, res, next) => {
  * - message: string - Confirmation message
  */
 router.post("/new-session", async (req, res) => {
-  const { sessionId } = req.body;
-
-  // Clear old session if provided
-  if (sessionId) {
-    maitriService.clearSession(sessionId);
+  const { moduleType } = req.body;
+  try {
+    const newConv = await Conversation.create({
+      title: "New Chat",
+      moduleType: moduleType || "default",
+      userId: "guest"
+    });
+    
+    res.json({
+      sessionId: newConv._id.toString(),
+      message: "New session started successfully",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create session" });
   }
-
-  // Generate new session ID
-  const newSessionId = uuidv4();
-
-  res.json({
-    sessionId: newSessionId,
-    message: "New session started successfully",
-  });
 });
 
 /**
@@ -96,6 +108,31 @@ router.get("/health", (req, res) => {
     service: "MAITRI Chat API",
     timestamp: new Date().toISOString(),
   });
+});
+
+/**
+ * GET /api/chat/tts
+ * Generate TTS audio buffer for a given text
+ * 
+ * Query params:
+ * - text: string (required) - Text to synthesize
+ */
+router.get("/tts", async (req, res, next) => {
+  try {
+    const { text } = req.query;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "Query parameter 'text' is required" });
+    }
+
+    const audioBuffer = await getTTSBuffer(text);
+    
+    // Set headers for MP3 audio playback
+    res.set("Content-Type", "audio/mpeg");
+    res.set("Content-Length", audioBuffer.byteLength);
+    res.send(Buffer.from(audioBuffer));
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

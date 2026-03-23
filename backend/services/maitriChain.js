@@ -24,12 +24,8 @@ import {
   ACT_INTEGRATION_PROMPT, 
   PSYCHOEDUCATION_PROMPT 
 } from "../prompts/cbtPrompts.js";
-
-/**
- * In-memory storage for conversation histories by session ID
- * In production, this should be replaced with a database solution
- */
-const conversationMemories = new Map();
+import Message from "../models/Message.js";
+import Conversation from "../models/Conversation.js";
 
 /**
  * Maximum number of messages to keep in conversation history
@@ -80,33 +76,45 @@ const promptTemplates = {
 };
 
 /**
- * Get or create conversation history for a session
- * @param {string} sessionId - Unique session identifier
- * @returns {Array} - Array of message objects
+ * Get conversation history from Database
+ * @param {string} conversationId - Unique session identifier
+ * @returns {Promise<Array>} - Array of message objects
  */
-function getConversationHistory(sessionId) {
-  if (!conversationMemories.has(sessionId)) {
-    conversationMemories.set(sessionId, []);
+async function getConversationHistory(conversationId) {
+  if (!conversationId || conversationId.length < 24) return [];
+  
+  try {
+    const messages = await Message.find({ conversationId })
+      .sort({ createdAt: -1 })
+      .limit(MAX_HISTORY_LENGTH * 2);
+    
+    // Reverse to chronological order
+    const chronological = messages.reverse();
+
+    return chronological.map(msg => 
+      msg.role === 'user' ? new HumanMessage(msg.text) : new AIMessage(msg.text)
+    );
+  } catch (err) {
+    console.error("Error loading chat history from DB", err);
+    return [];
   }
-  return conversationMemories.get(sessionId);
 }
 
 /**
- * Add messages to conversation history
- * @param {string} sessionId - Unique session identifier
- * @param {string} humanMessage - User's message
- * @param {string} aiMessage - AI's response
+ * Automatically update conversation title on first message
  */
-function addToHistory(sessionId, humanMessage, aiMessage) {
-  const history = getConversationHistory(sessionId);
-
-  history.push(new HumanMessage(humanMessage));
-  history.push(new AIMessage(aiMessage));
-
-  // Trim history if it exceeds max length
-  while (history.length > MAX_HISTORY_LENGTH * 2) {
-    history.shift(); // Remove oldest messages
-    history.shift();
+async function generateTitleIfEmpty(conversationId, userMessage) {
+  if (!conversationId || conversationId.length < 24) return;
+  
+  try {
+    const conv = await Conversation.findById(conversationId);
+    if (conv && (conv.title === "New Conversation" || conv.title === "New Chat")) {
+       const res = await model.invoke(`Task: Generate a 3-5 word concise title for this user message: "${userMessage}". Output just the title without quotes.`);
+       conv.title = res.content.trim().replace(/["']/g, "");
+       await conv.save();
+    }
+  } catch (err) {
+    console.error("Error generating title:", err);
   }
 }
 
@@ -114,8 +122,10 @@ function addToHistory(sessionId, humanMessage, aiMessage) {
  * Clear conversation history for a session
  * @param {string} sessionId - Unique session identifier
  */
-export function clearSession(sessionId) {
-  conversationMemories.delete(sessionId);
+export async function clearSession(sessionId) {
+  try {
+    await Message.deleteMany({ conversationId: sessionId });
+  } catch (err) {}
 }
 
 /**
@@ -128,7 +138,7 @@ export function clearSession(sessionId) {
  */
 export async function chat(sessionId, userMessage, emotion = null, moduleType = "default") {
   try {
-    const history = getConversationHistory(sessionId);
+    const history = await getConversationHistory(sessionId);
 
     // Get the correct prompt template based on moduleType
     const selectedTemplate = promptTemplates[moduleType] || promptTemplates.default;
@@ -151,8 +161,14 @@ export async function chat(sessionId, userMessage, emotion = null, moduleType = 
     // Extract the response text
     const responseText = response.content;
 
-    // Add to conversation history
-    addToHistory(sessionId, userMessage, responseText);
+    // Save to Database
+    if (sessionId && sessionId.length >= 24) {
+      await Message.create({ conversationId: sessionId, role: 'user', text: userMessage });
+      await Message.create({ conversationId: sessionId, role: 'assistant', text: responseText });
+      
+      // Fire title generator in background
+      generateTitleIfEmpty(sessionId, userMessage).catch(() => {});
+    }
 
     return {
       response: responseText,
@@ -169,13 +185,17 @@ export async function chat(sessionId, userMessage, emotion = null, moduleType = 
  * @param {string} sessionId - Unique session identifier
  * @returns {Object} - Session statistics
  */
-export function getSessionStats(sessionId) {
-  const history = getConversationHistory(sessionId);
-  return {
-    sessionId,
-    messageCount: history.length,
-    exists: conversationMemories.has(sessionId),
-  };
+export async function getSessionStats(sessionId) {
+  try {
+     const count = await Message.countDocuments({ conversationId: sessionId });
+     return {
+       sessionId,
+       messageCount: count,
+       exists: count > 0,
+     };
+  } catch (e) {
+     return { sessionId, messageCount: 0, exists: false };
+  }
 }
 
 export default {

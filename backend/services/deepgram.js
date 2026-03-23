@@ -76,3 +76,30 @@ export async function streamTTS({ text, onAudioChunk, onEnd }) {
     console.error("❌ Deepgram TTS error:", error);
   }
 }
+
+export async function getTTSBuffer(text) {
+  try {
+    const response = await fetch(
+      "https://api.deepgram.com/v1/speak?model=aura-asteria-en",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Deepgram TTS error: ${response.status} - ${errorText}`);
+    }
+
+    return await response.arrayBuffer();
+  } catch (error) {
+    console.error("❌ Deepgram getTTSBuffer error:", error);
+    throw error;
+  }
+}
+

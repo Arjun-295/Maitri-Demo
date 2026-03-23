@@ -18,6 +18,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/voice" element={<VoicePage />} />
         <Route path="/chat" element={<ChatPage />} />
+        <Route path="/chat/:moduleType" element={<ChatPage />} />
         <Route path="/exercises" element={<Exercises />}>
           <Route path="cbt" element={<CBT />} />
           <Route path="breathing" element={<BreathingTimer />} />

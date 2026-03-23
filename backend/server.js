@@ -8,7 +8,9 @@
 import express from "express";
 import cors from "cors";
 import config from "./config/index.js";
+import connectDB from "./config/db.js";
 import chatRoutes from "./routes/chat.js";
+import conversationRoutes from "./routes/conversations.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -16,9 +18,20 @@ import { createDeepgramStream, streamTTS } from "./services/deepgram.js";
 import { createMaitriChain } from "./services/langchain.js";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { MAITRI_VOICE_PROMPT } from "./prompts/maitriPromptVoice.js";
+import { 
+  CBT_CORE_PROMPT, 
+  DBT_SKILL_PROMPT, 
+  ACT_INTEGRATION_PROMPT, 
+  PSYCHOEDUCATION_PROMPT 
+} from "./prompts/cbtPrompts.js";
 
 // Initialize Express app
 const app = express();
+
+// -----------------
+// Database Connection
+// -----------------
+connectDB();
 
 // -----------------
 // Create HTTP Server
@@ -30,10 +43,22 @@ const server = http.createServer(app);
 // -----------------
 const wss = new WebSocketServer({ server, path: "/ws/voice" });
 
-wss.on("connection", (ws) => {
+wss.on("connection", (ws, req) => {
   console.log("🎤 Voice client connected");
-  const { llm, addToHistory, getHistory, createPrompt } = createMaitriChain();
-  const prompt = createPrompt(MAITRI_VOICE_PROMPT);
+  
+  // Parse URL to detect specialized module prompt payloads
+  const requestUrl = new URL(req.url, `http://localhost`);
+  const moduleType = requestUrl.searchParams.get("moduleType") || "default";
+  const conversationId = requestUrl.searchParams.get("conversationId");
+
+  let systemPrompt = MAITRI_VOICE_PROMPT;
+  if (moduleType === "cbt_core") systemPrompt = CBT_CORE_PROMPT;
+  else if (moduleType === "dbt_skill") systemPrompt = DBT_SKILL_PROMPT;
+  else if (moduleType === "act_integration") systemPrompt = ACT_INTEGRATION_PROMPT;
+  else if (moduleType === "psychoeducation") systemPrompt = PSYCHOEDUCATION_PROMPT;
+
+  const { llm, loadHistory, saveAndAddToHistory, createPrompt } = createMaitriChain();
+  const prompt = createPrompt(systemPrompt);
   const parser = new StringOutputParser();
 
   let dgReady = false;
@@ -42,6 +67,11 @@ wss.on("connection", (ws) => {
   const RATE_LIMIT_MS = 2000; // 2 second cooldown between API calls
 
   const dgStream = createDeepgramStream(async ({ text, isFinal }) => {
+    // Broadcast real-time partial/final STT transcript data to WebSocket connected UI
+    if (ws.readyState === ws.OPEN && text.trim()) {
+      ws.send(JSON.stringify({ type: "transcript", role: "user", text, isFinal }));
+    }
+
     if (!isFinal) return;
 
     // Rate limiting check
@@ -56,15 +86,23 @@ wss.on("connection", (ws) => {
     console.log("📝 User: ", text);
 
     try {
+      // Load history from DB (or fallback memory)
+      const history = await loadHistory(conversationId);
+
       // Build the chain: prompt → llm → parser
       const chain = prompt.pipe(llm).pipe(parser);
 
       const response = await chain.invoke({
         text: text,
-        history: getHistory(),
+        history: history,
       });
 
       console.log("🤖 Maitri Response: ", response);
+
+      // Broadcast LLM text back before generating speech
+      if (ws.readyState === ws.OPEN && response) {
+        ws.send(JSON.stringify({ type: "transcript", role: "assistant", text: response, isFinal: true }));
+      }
 
       await streamTTS({
         text: response,
@@ -79,7 +117,7 @@ wss.on("connection", (ws) => {
       });
 
       // Save to chat history
-      addToHistory(text, response);
+      await saveAndAddToHistory(conversationId, text, response);
     } catch (error) {
       console.error("❌ LangChain Error:", error.message);
       console.error("Full error:", error);
@@ -114,8 +152,8 @@ wss.on("connection", (ws) => {
 app.use(
   cors({
     origin: config.corsOrigin,
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 
@@ -151,6 +189,7 @@ app.get("/", (req, res) => {
 
 // Chat API routes
 app.use("/api/chat", chatRoutes);
+app.use("/api/conversations", conversationRoutes);
 
 // -----------------
 // Error Handling

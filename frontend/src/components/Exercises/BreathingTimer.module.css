@@ -1,84 +1,165 @@
-.breathingContainer {
+.container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 25px;
-  border-radius: 30px;
+  padding: 30px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 500px;
-  margin: 10px auto;
+  max-width: 600px;
+  margin: 0 auto;
+  gap: 2rem;
+  background: rgba(20, 25, 40, 0.4);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.visualizerArea {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  width: 100%;
 }
 
 .breathingCircle {
-  width: 250px;
-  height: 250px;
+  width: 180px;
+  height: 180px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(100, 200, 255, 0.4) 0%,
-    rgba(50, 100, 255, 0.1) 70%
-  );
+  background: radial-gradient(circle, rgba(100, 200, 255, 0.4) 0%, rgba(50, 100, 255, 0.1) 70%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: all 4s linear;
-  margin-bottom: 40px;
   border: 2px solid rgba(255, 255, 255, 0.2);
   position: relative;
+  box-shadow: 0 0 30px rgba(100, 200, 255, 0.2);
+  /* Default slow transition for smoother stop/start */
+  transition: transform 1s ease-out;
 }
 
-.breathingCircle.active.inhale {
-  transform: scale(1.5);
-  background: radial-gradient(
-    circle,
-    rgba(100, 255, 200, 0.6) 0%,
-    rgba(50, 200, 150, 0.2) 70%
-  );
-}
-
-.breathingCircle.active.exhale {
-  transform: scale(1);
-  background: radial-gradient(
-    circle,
-    rgba(255, 100, 100, 0.4) 0%,
-    rgba(200, 50, 50, 0.1) 70%
-  );
+.breathingCircle.animated {
+  /* Exactly 4 seconds for a phase to expand/shrink smoothly */
+  transition: transform 4s linear;
+  background: radial-gradient(circle, rgba(100, 255, 200, 0.5) 0%, rgba(50, 200, 150, 0.15) 70%);
+  box-shadow: 0 0 40px rgba(100, 255, 200, 0.3);
+  border-color: rgba(100, 255, 200, 0.4);
 }
 
 .breathingText {
   text-align: center;
   z-index: 2;
+  color: white;
 }
 
 .breathingText h2 {
-  font-size: 2rem;
+  font-size: 1.8rem;
   margin: 0;
-  color: white;
+  font-weight: 500;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
 .breathingText p {
-  font-size: 3rem;
-  font-weight: bold;
-  margin: 10px 0 0 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 5px 0 0 0;
+  opacity: 0.9;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
 }
 
-.breathingControls {
-  margin-top: 20px;
+.controlsArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.instructionText {
+  margin-bottom: 20px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 15px;
 }
 
 .controlButton {
-  padding: 12px 24px;
-  font-size: 1.1rem;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 600;
   border: none;
   border-radius: 50px;
   cursor: pointer;
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
 }
 
-.breathingInstruction {
-  margin-top: 20px;
-  font-style: italic;
-  opacity: 0.7;
+.btnStart {
+  background: linear-gradient(135deg, rgba(0, 255, 200, 0.5), rgba(0, 200, 200, 0.3));
+  color: white;
+  border: 1px solid rgba(0, 255, 200, 0.5);
 }
+.btnStart:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(0, 255, 200, 0.7), rgba(0, 200, 200, 0.5));
+}
+.btnStart:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  cursor: wait;
+  border-color: transparent;
+}
+
+.btnPause {
+  background: rgba(255, 100, 100, 0.2);
+  color: #ff8888;
+  border: 1px solid rgba(255, 100, 100, 0.4);
+}
+.btnPause:hover {
+  background: rgba(255, 100, 100, 0.4);
+}
+
+.btnReset {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.btnReset:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.durationSelector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 25px;
+  color: white;
+  font-size: 1.1rem;
+}
+
+.durationSelect {
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.durationSelect option {
+  background: #1a1f2e;
+  color: white;
+}
+
+.sessionTimer {
+  margin-bottom: 25px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: rgba(0, 255, 200, 0.9);
+  text-shadow: 0 0 10px rgba(0, 255, 200, 0.3);
+}
+

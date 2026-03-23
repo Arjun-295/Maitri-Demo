@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import "./ChatPage.css";
 import ReactMarkdown from "react-markdown";
+import { useVoiceAgent } from "../hooks/useVoiceAgent";
+import ChatSidebar from "../components/ChatSidebar/ChatSidebar";
 import {
   loadModels,
   detectEmotion,
@@ -71,6 +73,37 @@ const SendIcon = () => (
   </svg>
 );
 
+// Voice Icon for Chat
+const VoiceIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+    <line x1="12" y1="19" x2="12" y2="23"></line>
+    <line x1="8" y1="23" x2="16" y2="23"></line>
+  </svg>
+);
+
+const StopVoiceIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    stroke="none"
+  >
+    <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+  </svg>
+);
+
 // Loading dots animation component
 const LoadingDots = () => (
   <div className="loading-dots">
@@ -83,16 +116,53 @@ const LoadingDots = () => (
 export default function ChatPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { moduleType: paramModuleType } = useParams();
   const initialMessage = location.state?.message || "";
-  const moduleType = location.state?.moduleType || "default";
-  const pageTitle = location.state?.title || "Maitri Chat";
+  const moduleType = paramModuleType || location.state?.moduleType || "default";
 
-  const [messages, setMessages] = useState([]);
+  const moduleTitles = {
+    default: "Maitri Chat",
+    cbt_core: "CBT Core Module",
+    dbt_skill: "DBT Skill Suite",
+    act_integration: "ACT Integration",
+    psychoeducation: "Clinical Psychoeducation"
+  };
+  const pageTitle = moduleTitles[moduleType] || location.state?.title || "Maitri Chat";
+
   const theme = moduleThemes[moduleType] || moduleThemes.default;
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Replace localStorage with centralized DB IDs
   const [sessionId, setSessionId] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [cameraStream, setCameraStream] = useState(null);
+
+  // Fetch Session History from MongoDB when sessionId changes
+  useEffect(() => {
+    if (!sessionId) {
+      setMessages([]);
+      return;
+    }
+    const loadDbHistory = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/conversations/${sessionId}`);
+        if (!res.ok) throw new Error("Could not load history");
+        const data = await res.json();
+        if (data.messages) {
+          setMessages(data.messages.map(m => ({
+            id: m._id,
+            text: m.text,
+            sender: m.role === 'user' ? 'user' : 'bot',
+            timestamp: m.createdAt,
+          })));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadDbHistory();
+  }, [sessionId]);
 
   // Emotion detection state
   const [detectedEmotion, setDetectedEmotion] = useState(null);
@@ -105,8 +175,23 @@ export default function ChatPage() {
   const initialMessageProcessed = useRef(false);
   const detectionIntervalRef = useRef(null);
 
+  const {
+    isRemoteVoiceRunning,
+    voiceStatus,
+    startVoiceAgent,
+    stopVoiceAgent,
+    interimTranscript
+  } = useVoiceAgent({
+    moduleType,
+    conversationId: sessionId,
+    onTranscript: (text, sender) => {
+      addMessage(text, sender);
+    }
+  });
+
   // Handler for navigating back
   const handleBack = () => {
+    stopVoiceAgent();
     // Stop camera and detection before going back
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
@@ -114,7 +199,7 @@ export default function ChatPage() {
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
     }
-    navigate("/");
+    navigate(-1);
   };
 
   /**
@@ -188,22 +273,44 @@ export default function ChatPage() {
     }
   };
 
-  // Initialize with the first message if provided
+  // Initialize with the first message if provided and history is empty
   useEffect(() => {
     if (
       initialMessage &&
       initialMessage.trim() &&
-      !initialMessageProcessed.current
+      !initialMessageProcessed.current &&
+      messages.length === 0
     ) {
       initialMessageProcessed.current = true;
       processMessage(initialMessage);
-    }
-  }, [initialMessage]);
 
-  // Auto-scroll to bottom when new messages arrive
+      // Clear the message from location state so refresh doesn't trigger it again
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [initialMessage, messages.length, navigate, location.pathname]);
+
+  const handleNewSession = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat/new-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId })
+      });
+      const data = await response.json();
+      setSessionId(data.sessionId);
+    } catch (err) {
+      console.error("Error creating new session:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Auto-scroll to bottom when new messages arrive or interim changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, interimTranscript]);
 
   // Initialize camera and emotion detection
   useEffect(() => {
@@ -291,124 +398,158 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="chat-page-container" style={{ background: `radial-gradient(circle at 50% 10%, ${theme.accent}20, transparent 70%), #050508` }}>
-      {/* Header with back button */}
-      <div className="chat-page-header" style={{ borderBottomColor: theme.accent + '40', boxShadow: `0 4px 15px ${theme.accent}10` }}>
-        <button className="back-button" onClick={handleBack} style={{ color: theme.accent }}>
-          <BackIcon />
-          <span>Back</span>
-        </button>
-        <h1 className="chat-page-title" style={{ color: theme.accent, textShadow: `0 0 10px ${theme.accent}60` }}>{pageTitle}</h1>
-      </div>
-
-      {/* Main content area */}
-      <div className="chat-page-content">
-        {/* Left side - Camera view */}
-        <div className="camera-section">
-          <div className="camera-box glass-effect">
-            <div className="camera-feed">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="camera-video"
-              />
-            </div>
-            <div className="emotion-overlay">
-              {isModelLoading ? (
-                <div className="emotion-badge loading">
-                  <span className="emotion-icon">⏳</span>
-                  <span className="emotion-text">Loading AI...</span>
-                </div>
-              ) : modelError ? (
-                <div className="emotion-badge error">
-                  <span className="emotion-icon">⚠️</span>
-                  <span className="emotion-text">Detection Error</span>
-                </div>
-              ) : detectedEmotion ? (
-                <div
-                  className="emotion-badge detected"
-                  style={{
-                    backgroundColor: EMOTION_COLORS[detectedEmotion] + "20",
-                    borderColor: EMOTION_COLORS[detectedEmotion],
-                  }}
-                >
-                  <span className="emotion-icon">
-                    {EMOTION_EMOJIS[detectedEmotion]}
-                  </span>
-                  <span
-                    className="emotion-text"
-                    style={{ color: EMOTION_COLORS[detectedEmotion] }}
-                  >
-                    {getEmotionDisplayName(detectedEmotion)}
-                  </span>
-                  <span className="emotion-confidence">
-                    {Math.round(emotionConfidence * 100)}%
-                  </span>
-                </div>
-              ) : (
-                <div className="emotion-badge">
-                  <span className="emotion-icon">👤</span>
-                  <span className="emotion-text">Detecting...</span>
-                </div>
-              )}
-            </div>
-          </div>
+    <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      <ChatSidebar 
+        currentSessionId={sessionId}
+        onSelectSession={(id) => setSessionId(id)}
+        onNewSession={handleNewSession}
+        moduleType={moduleType}
+      />
+      <div className="chat-page-container" style={{ flex: 1, background: `radial-gradient(circle at 50% 10%, ${theme.accent}20, transparent 70%), #050508` }}>
+        {/* Header with back button */}
+        <div className="chat-page-header" style={{ borderBottomColor: theme.accent + '40', boxShadow: `0 4px 15px ${theme.accent}10` }}>
+          <button className="back-button" onClick={handleBack} style={{ color: theme.accent }}>
+            <BackIcon />
+            <span>Back</span>
+          </button>
+          <h1 className="chat-page-title" style={{ color: theme.accent, textShadow: `0 0 10px ${theme.accent}60` }}>{pageTitle}</h1>
         </div>
 
-        {/* Right side - Chat box */}
-        <div className="chat-section">
-          <div className="chat-box glass-effect">
-            {/* Messages area */}
-            <div className="messages-container">
-              {messages.length === 0 && !isLoading ? (
-                <div className="empty-chat">
-                  <p>Start a conversation with Maitri</p>
-                </div>
-              ) : (
-                <>
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`message ${msg.sender === "user" ? "user-message" : "bot-message"}${msg.isError ? " error-message" : ""}`}
+        {isRemoteVoiceRunning && (
+          <div className="voice-mode-banner" style={{ borderBottomColor: theme.accent + '40', color: theme.accent }}>
+            <div className={`status-dot active`}></div>
+            Voice Mode Active - {voiceStatus}
+          </div>
+        )}
+
+        {/* Main content area */}
+        <div className="chat-page-content">
+          {/* Left side - Camera view */}
+          <div className="camera-section">
+            <div className="camera-box glass-effect">
+              <div className="camera-feed">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="camera-video"
+                />
+              </div>
+              <div className="emotion-overlay">
+                {isModelLoading ? (
+                  <div className="emotion-badge loading">
+                    <span className="emotion-icon">⏳</span>
+                    <span className="emotion-text">Loading AI...</span>
+                  </div>
+                ) : modelError ? (
+                  <div className="emotion-badge error">
+                    <span className="emotion-icon">⚠️</span>
+                    <span className="emotion-text">Detection Error</span>
+                  </div>
+                ) : detectedEmotion ? (
+                  <div
+                    className="emotion-badge detected"
+                    style={{
+                      backgroundColor: EMOTION_COLORS[detectedEmotion] + "20",
+                      borderColor: EMOTION_COLORS[detectedEmotion],
+                    }}
+                  >
+                    <span className="emotion-icon">
+                      {EMOTION_EMOJIS[detectedEmotion]}
+                    </span>
+                    <span
+                      className="emotion-text"
+                      style={{ color: EMOTION_COLORS[detectedEmotion] }}
                     >
-                      <div className="message-bubble" style={msg.sender === "bot" ? { borderLeft: `3px solid ${theme.accent}`, background: `${theme.accent}05` } : {}}>
-                        <div className="message-text">
-                          <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      {getEmotionDisplayName(detectedEmotion)}
+                    </span>
+                    <span className="emotion-confidence">
+                      {Math.round(emotionConfidence * 100)}%
+                    </span>
+                  </div>
+                ) : (
+                  <div className="emotion-badge">
+                    <span className="emotion-icon">👤</span>
+                    <span className="emotion-text">Detecting...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right side - Chat box */}
+          <div className="chat-section">
+            <div className="chat-box glass-effect">
+              {/* Messages area */}
+              <div className="messages-container">
+                {messages.length === 0 && !isLoading ? (
+                  <div className="empty-chat">
+                    <p>Start a new conversation with Maitri</p>
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`message ${msg.sender === "user" ? "user-message" : "bot-message"}${msg.isError ? " error-message" : ""}`}
+                      >
+                        <div className="message-bubble" style={msg.sender === "bot" ? { borderLeft: `3px solid ${theme.accent}`, background: `${theme.accent}05` } : {}}>
+                          <div className="message-text">
+                            <ReactMarkdown>{msg.text}</ReactMarkdown>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="message bot-message">
-                      <div className="message-bubble loading-bubble">
-                        <LoadingDots />
+                    ))}
+                    {interimTranscript && (
+                      <div className="message user-message interim">
+                        <div className="message-bubble">
+                          <div className="message-text">
+                            <ReactMarkdown>{interimTranscript + " 🎙️..."}</ReactMarkdown>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+                    )}
+                    {isLoading && (
+                      <div className="message bot-message">
+                        <div className="message-bubble loading-bubble">
+                          <LoadingDots />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
 
-            {/* Input area */}
-            <form className="chat-input-form" onSubmit={handleSend}>
-              <input
-                type="text"
-                className="chat-message-input"
-                placeholder="Type your message..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-              />
-              <button
-                type="submit"
-                className={`chat-send-button${isLoading ? " disabled" : ""}`}
-                disabled={isLoading}
-              >
-                <SendIcon />
-              </button>
-            </form>
+              {/* Input area */}
+              <form className="chat-input-form" onSubmit={handleSend}>
+                <button
+                  type="button"
+                  className={`chat-voice-button ${isRemoteVoiceRunning ? 'active' : ''}`}
+                  onClick={isRemoteVoiceRunning ? stopVoiceAgent : startVoiceAgent}
+                  title={isRemoteVoiceRunning ? "Stop Voice Mode" : "Start Voice Mode"}
+                  disabled={!sessionId}
+                >
+                   {isRemoteVoiceRunning ? <StopVoiceIcon /> : <VoiceIcon />}
+                </button>
+                <input
+                  type="text"
+                  className="chat-message-input"
+                  placeholder={!sessionId ? "Select or start a chat to type..." : "Type your message..."}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  disabled={isRemoteVoiceRunning || !sessionId}
+                />
+                <button
+                  type="submit"
+                  className={`chat-send-button${isLoading || isRemoteVoiceRunning || !sessionId ? " disabled" : ""}`}
+                  disabled={isLoading || isRemoteVoiceRunning || !sessionId}
+                >
+                  <SendIcon />
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

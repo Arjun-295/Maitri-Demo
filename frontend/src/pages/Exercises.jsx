@@ -1,6 +1,5 @@
 import React from "react";
 import { useNavigate, Outlet, useLocation, Link } from "react-router-dom";
-import GlassNav from "../components/GlassNav";
 
 export default function Exercises() {
   const navigate = useNavigate();
@@ -86,8 +85,6 @@ export default function Exercises() {
           )}
         </div>
       </div>
-
-      <GlassNav activeButton="exercises" setActiveButton={(mode) => navigate(mode === 'exercises' ? '/exercises' : mode === 'voice' ? '/voice' : '/')} />
     </div>
   );
 }

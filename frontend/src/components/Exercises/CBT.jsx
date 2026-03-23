@@ -38,8 +38,8 @@ export default function CBT() {
       {modules.map((mod) => (
         <Link 
           key={mod.id} 
-          to="/chat" 
-          state={{ moduleType: mod.id, title: mod.title }}
+          to={`/chat/${mod.id}`} 
+          state={{ message: `I'd like to start with the ${mod.title}.` }}
           className="flex flex-col items-center text-center p-10 bg-[#141923]/40 backdrop-blur-md rounded-3xl border border-white/10 cursor-pointer transition-all duration-400 text-white relative overflow-hidden hover:-translate-y-1 hover:border-[var(--card-color)] hover:shadow-[0_0_25px_var(--card-color)] group decoration-none"
           style={{ '--card-color': mod.color }}
         >
